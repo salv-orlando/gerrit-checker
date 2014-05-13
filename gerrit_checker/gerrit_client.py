@@ -10,19 +10,18 @@ def _check_status_code(res):
         res.raise_for_status()
 
 
-def get_new_changes(uri, projects, age):
+def get_new_changes_for_project(uri, project, age):
     """ Retrieve new changes up to a certain age.
 
     This method will return information only for new changes
     submitted to gerrit since the last
     """
-    project_list = ' OR '.join(projects)
     age_str = "%ss" % age
     res = requests.get(
-        "%(uri)s/changes/?q=project:%(project_list)s+"
+        "%(uri)s/changes/?q=project:%(project)s+"
         "status:open+-age:%(age)s&o=LABELS" %
         {'uri': uri,
-         'project_list': project_list,
+         'project': project,
          'age': age_str})
     _check_status_code(res)
     actual_res = res.text[res.text.index(constants.GERRIT_MAGIC_STRING) +
@@ -31,6 +30,6 @@ def get_new_changes(uri, projects, age):
     results = []
     return [(change['_number'],
              change['subject'],
-             change['project'],
+             change['owner'].get('name'),
              change['branch'],
-             change['topic']) for change in stuff]
+             change.get('topic')) for change in stuff]

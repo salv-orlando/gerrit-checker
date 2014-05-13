@@ -26,25 +26,41 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def get_review_age():
+def get_review_age(projects):
+    review_ages = {}
+
+    def set_default_ages():
+        print("Last check timestamp for project %s, not found or "
+              "invalid. Defaulting to 48 hours." % project,
+              file=sys.stderr)
+        review_ages[project] = 48 * 3600
+
     try:
         f = open(constants.CHECK_DATA_FILE)
         data = json.loads(f.read())
-        last_check = datetime.datetime.strptime(
-            data['last_check'], constants.DATETIME_FORMAT)
-        delta = datetime.datetime.now() - last_check
-        return delta.seconds
-    except (IOError, KeyError, ValueError):
-        print("Last check timestamp not found or invalid. "
-              "Defaulting to 48 hours",
-              file=sys.stderr)
-        return 48 * 3600
+    except IOError:
+        set_default_ages()
+        return
+
+    last_check_data = data.get('last_check', {})
+    for project in projects:
+        try:
+            last_check = datetime.datetime.strptime(
+                last_check_data[project],
+                constants.DATETIME_FORMAT)
+            delta = datetime.datetime.now() - last_check
+            review_ages[project] = delta.seconds
+        except (KeyError, TypeError, ValueError):
+            set_default_ages()
+    return review_ages
 
 
-def save_check_data():
+def save_check_data(projects):
     last_check = datetime.datetime.now()
-    output = json.dumps({'last_check':
-                         last_check.strftime(constants.DATETIME_FORMAT)})
+    output = json.dumps(
+        {'last_check':
+            dict((project, last_check.strftime(constants.DATETIME_FORMAT))
+                 for project in projects)})
     f = open(constants.CHECK_DATA_FILE, 'w')
     f.write(output)
     f.close()
@@ -55,18 +71,24 @@ def main():
     args = parse_arguments()
     if not args.age:
         # Age was not explicitly specified
-        review_age = get_review_age()
+        projects_and_ages = get_review_age(args.projects)
     else:
-        review_age = args.age * 3600
-    print("Maximum review age:%s seconds" % review_age)
-    stuff = gerrit_client.get_new_changes(args.uri, args.projects, review_age)
-    columns = ["Change number", "Subject", "Project", "Branch", "Topic"]
-    table = prettytable.PrettyTable(columns)
-    for column in columns:
-        table.align[column] = "l"
-    table.padding_width = 1
-    for item in stuff:
-        table.add_row(item)
-    print(table)
+        projects_and_ages = (dict((project, args.age * 3600)
+                             for project in args.projects))
+    print("Maximum review ages:\n%s" % projects_and_ages)
+    for project in projects_and_ages:
+        stuff = gerrit_client.get_new_changes_for_project(
+            args.uri, project, projects_and_ages[project])
+        columns = ["Change number", "Subject", "Owner", "Branch", "Topic"]
+        table = prettytable.PrettyTable(columns)
+        for column in columns:
+            table.align[column] = "l"
+        table.padding_width = 1
+        for item in stuff:
+            table.add_row(item)
+        print("--------------------------------------------------------------")
+        print("Project:%s" % project)
+        print("--------------------------------------------------------------")
+        print(table)
     if not args.peek:
-        save_check_data()
+        save_check_data(args.projects)
