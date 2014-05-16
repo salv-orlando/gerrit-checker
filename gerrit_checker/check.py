@@ -5,6 +5,7 @@ import json
 import sys
 
 import prettytable
+from requests import exceptions as req_exc
 
 from gerrit_checker import constants
 from gerrit_checker import gerrit_client
@@ -15,6 +16,11 @@ def parse_arguments():
         description='Do useful things with gerrit REST API')
     parser.add_argument('--projects', type=str, nargs='+', required=True,
                         help='project for which changes should be retrieved')
+    owner_group = parser.add_mutually_exclusive_group()
+    owner_group.add_argument('--owners', type=str, nargs='+',
+                             help='filter by patch owned by specified users')
+    owner_group.add_argument('--exclude-owners', type=str, nargs='+',
+                             help='exluded patches owned by specified users')
     parser.add_argument('--age', type=int, default=None,
                         help=('maximum review age in hours'))
     parser.add_argument('--peek', default=False, action='store_true',
@@ -77,9 +83,21 @@ def main():
                              for project in args.projects))
     print("Maximum review ages:\n%s" % projects_and_ages)
     for project in projects_and_ages:
-        stuff = gerrit_client.get_new_changes_for_project(
-            args.uri, project, projects_and_ages[project])
-        columns = ["Change number", "Subject", "Owner", "Branch", "Topic"]
+        exclude_owners = False
+        owners = args.owners
+        if args.exclude_owners:
+            exclude_owners = True
+            owners = args.exclude_owners
+        try:
+            stuff = gerrit_client.get_new_changes_for_project(
+                args.uri, project, projects_and_ages[project],
+                owners=owners, exclude_owners=exclude_owners)
+        except req_exc.HTTPError as e:
+            print("The Gerrit API request returned an error:%s" % e)
+            sys.exit(1)
+
+        columns = ["Change number", "Subject", "Owner",
+                   "Last update", "Branch", "Topic"]
         table = prettytable.PrettyTable(columns)
         for column in columns:
             table.align[column] = "l"
