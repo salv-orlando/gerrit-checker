@@ -22,7 +22,8 @@ def _prepare_output(res, sorts=None):
         # Gerrit outputs timestamps with nanoseconds. We're not that pedant
         update_timestamp = datetime.datetime.strptime(change['updated'][:-10],
                                                       '%Y-%m-%d %H:%M:%S')
-        results.append((change['_number'],
+        results.append((change['project'],
+                        change['_number'],
                         change['subject'],
                         change['owner'].get('name'),
                         update_timestamp.strftime(constants.DATETIME_FORMAT),
@@ -31,7 +32,7 @@ def _prepare_output(res, sorts=None):
     return results
 
 
-def get_new_changes_for_project(uri, project, age, only_open=True,
+def get_new_changes_for_project(uri, projects_and_ages, only_open=True,
                                 owners=None, exclude_owners=False):
     """Retrieve new changes up to a certain age.
 
@@ -40,18 +41,20 @@ def get_new_changes_for_project(uri, project, age, only_open=True,
     """
     owner_key = '-owner' if exclude_owners else 'owner'
     owner_joiner = '+' if exclude_owners else '+OR+'
+    project_age_clause = ' OR '.join('(project:%s+-age:%ss)'
+                                     % (project, age) for (project, age) in
+                                     projects_and_ages.iteritems())
     # Ensure owners is iterable
     if not owners:
         owners = []
-    owners_str = owner_joiner.join(["%s:%s" % (owner_key, owner)
-                                    for owner in owners])
-    req_uri = (("%(uri)s/changes/?q=project:%(project)s+"
-                "+-age:%(age)ss%(status)s%(owners)s&o=LABELS") %
+    owner_clause = owner_joiner.join(["%s:%s" % (owner_key, owner)
+                                      for owner in owners])
+    req_uri = (("%(uri)s/changes/?q=%(project_age)s"
+                "%(status)s%(owner)s&o=LABELS") %
                {'uri': uri,
-                'project': project,
-                'age': age,
+                'project_age': project_age_clause,
                 'status': '+status:open' if only_open else '',
-                'owners': '+(%s)' % owners_str})
+                'owner': '+(%s)' % owner_clause if owner_clause else ''})
     res = requests.get(req_uri)
     _check_status_code(res)
     return _prepare_output(res.text)

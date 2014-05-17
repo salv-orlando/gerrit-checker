@@ -82,31 +82,27 @@ def main():
         projects_and_ages = (dict((project, args.age * 3600)
                              for project in args.projects))
     print("Maximum review ages:\n%s" % projects_and_ages)
-    for project in projects_and_ages:
-        exclude_owners = False
-        owners = args.owners
-        if args.exclude_owners:
-            exclude_owners = True
-            owners = args.exclude_owners
-        try:
-            stuff = gerrit_client.get_new_changes_for_project(
-                args.uri, project, projects_and_ages[project],
-                owners=owners, exclude_owners=exclude_owners)
-        except req_exc.HTTPError as e:
-            print("The Gerrit API request returned an error:%s" % e)
-            sys.exit(1)
+    exclude_owners = False
+    owners = args.owners
+    if args.exclude_owners:
+        exclude_owners = True
+        owners = args.exclude_owners
+    try:
+        stuff = gerrit_client.get_new_changes_for_project(
+            args.uri, projects_and_ages,
+            owners=owners, exclude_owners=exclude_owners)
+    except req_exc.HTTPError as e:
+        print("The Gerrit API request returned an error:%s" % e)
+        sys.exit(1)
 
-        columns = ["Change number", "Subject", "Owner",
-                   "Last update", "Branch", "Topic"]
-        table = prettytable.PrettyTable(columns)
-        for column in columns:
-            table.align[column] = "l"
-        table.padding_width = 1
-        for item in stuff:
-            table.add_row(item)
-        print("--------------------------------------------------------------")
-        print("Project:%s" % project)
-        print("--------------------------------------------------------------")
-        print(table)
+    columns = ["Project", "Change number", "Subject",
+               "Owner", "Last update", "Branch", "Topic"]
+    table = prettytable.PrettyTable(columns)
+    for column in columns:
+        table.align[column] = "l"
+    table.padding_width = 1
+    for item in stuff:
+        table.add_row(item)
+    print(table)
     if not args.peek:
         save_check_data(args.projects)
