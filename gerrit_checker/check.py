@@ -21,6 +21,8 @@ def parse_arguments():
                              help='filter by patch owned by specified users')
     owner_group.add_argument('--exclude-owners', type=str, nargs='+',
                              help='exluded patches owned by specified users')
+    parser.add_argument('--only-new', default=False, action='store_true',
+                        help='Retrieve only completely new changes')
     parser.add_argument('--age', type=int, default=None,
                         help=('maximum review age in hours'))
     parser.add_argument('--peek', default=False, action='store_true',
@@ -55,7 +57,7 @@ def get_review_age(projects):
                 last_check_data[project],
                 constants.DATETIME_FORMAT)
             delta = datetime.datetime.now() - last_check
-            review_ages[project] = delta.seconds
+            review_ages[project] = delta.total_seconds()
         except (KeyError, TypeError, ValueError):
             set_default_ages()
     return review_ages
@@ -88,9 +90,10 @@ def main():
         exclude_owners = True
         owners = args.exclude_owners
     try:
-        stuff = gerrit_client.get_new_changes_for_project(
+        stuff = gerrit_client.get_changes(
             args.uri, projects_and_ages,
-            owners=owners, exclude_owners=exclude_owners)
+            owners=owners, exclude_owners=exclude_owners,
+            only_new=args.only_new)
     except req_exc.HTTPError as e:
         print("The Gerrit API request returned an error:%s" % e)
         sys.exit(1)
