@@ -25,7 +25,7 @@ def parse_arguments():
                         help='Retrieve only completely new changes')
     parser.add_argument('--age', type=int, default=None,
                         help=('maximum review age in hours'))
-    parser.add_argument('--reviewers', type=str, nargs='+', required=True,
+    parser.add_argument('--reviewers', type=str, nargs='+',
                         help='retrieve only patches being reviewed by '
                              'specified users')
     parser.add_argument('--files', type=str,
