@@ -25,6 +25,9 @@ def parse_arguments():
                         help='Retrieve only completely new changes')
     parser.add_argument('--age', type=int, default=None,
                         help=('maximum review age in hours'))
+    parser.add_argument('--reviewers', type=str, nargs='+', required=True,
+                        help='retrieve only patches being reviewed by '
+                             'specified users')
     parser.add_argument('--peek', default=False, action='store_true',
                         help=("Only peek changes, do not update "
                               "check timestamp"))
@@ -93,7 +96,7 @@ def main():
         stuff = gerrit_client.get_changes(
             args.uri, projects_and_ages,
             owners=owners, exclude_owners=exclude_owners,
-            only_new=args.only_new)
+            reviewers=args.reviewers, only_new=args.only_new)
     except req_exc.HTTPError as e:
         print("The Gerrit API request returned an error:%s" % e)
         sys.exit(1)

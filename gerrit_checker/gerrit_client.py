@@ -49,7 +49,8 @@ def _prepare_output(data):
 
 
 def get_changes(uri, projects_and_ages, only_open=True,
-                owners=None, exclude_owners=False, only_new=False):
+                owners=None, exclude_owners=False, reviewers=None,
+                only_new=False):
     """Retrieves gerrit changes.
 
     Also performds filters on age, patch status, patch owner and newnewss.
@@ -64,12 +65,19 @@ def get_changes(uri, projects_and_ages, only_open=True,
         owners = []
     owner_clause = owner_joiner.join(["%s:%s" % (owner_key, owner)
                                       for owner in owners])
+    # Ensure reviewers is iterable
+    if not reviewers:
+        reviewers = []
+    reviewer_clause = '+'.join(["%s:%s" % ('reviewer', reviewer)
+                                for reviewer in reviewers])
     req_uri = (("%(uri)s/changes/?q=%(project_age)s"
-                "%(status)s%(owner)s&o=LABELS") %
+                "%(status)s%(owner)s%(reviewer)s&o=LABELS") %
                {'uri': uri,
                 'project_age': project_age_clause,
                 'status': '+status:open' if only_open else '',
-                'owner': '+(%s)' % owner_clause if owner_clause else ''})
+                'owner': '+(%s)' % owner_clause if owner_clause else '',
+                'reviewer': ('+(%s)' % reviewer_clause
+                             if reviewer_clause else '')})
     res = requests.get(req_uri)
     _check_status_code(res)
     actual_res = res.text[res.text.index(constants.GERRIT_MAGIC_STRING) +
