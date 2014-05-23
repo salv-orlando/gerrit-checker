@@ -64,7 +64,7 @@ def get_review_age(projects):
                 last_check_data[project],
                 constants.DATETIME_FORMAT)
             delta = datetime.datetime.now() - last_check
-            review_ages[project] = delta.total_seconds()
+            review_ages[project] = int(delta.total_seconds())
         except (KeyError, TypeError, ValueError):
             set_default_ages()
     return review_ages
