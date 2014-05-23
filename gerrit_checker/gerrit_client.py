@@ -51,7 +51,7 @@ def _prepare_output(data):
 
 def get_changes(uri, projects_and_ages, only_open=True,
                 owners=None, exclude_owners=False, reviewers=None,
-                only_new=False, credentials=None):
+                files=None, only_new=False, credentials=None):
     """Retrieves gerrit changes.
 
     Also performds filters on age, patch status, patch owner and newnewss.
@@ -71,19 +71,24 @@ def get_changes(uri, projects_and_ages, only_open=True,
         reviewers = []
     reviewer_clause = '+'.join(["%s:%s" % ('reviewer', reviewer)
                                 for reviewer in reviewers])
+
+    # Gerrit requires regex patter to start with '^'
+    if files and not files.startswith('^'):
+        files = '^' + files
     auth = None
     if credentials:
         auth = requests.auth.HTTPDigestAuth(credentials['user'],
                                             credentials['password'])
     req_uri = (("%(uri)s/%(auth)schanges/?q=%(project_age)s"
-                "%(status)s%(owner)s%(reviewer)s&o=LABELS") %
+                "%(status)s%(owner)s%(reviewer)s%(file)s&o=LABELS") %
                {'uri': uri,
                 'auth': 'a/' if auth else '',
                 'project_age': '(%s)' % project_age_clause,
                 'status': '+status:open' if only_open else '',
                 'owner': '+(%s)' % owner_clause if owner_clause else '',
                 'reviewer': ('+(%s)' % reviewer_clause
-                             if reviewer_clause else '')})
+                             if reviewer_clause else ''),
+                'file': '+file:%s' % files if files else ''})
     auth = None
     if credentials:
         auth = requests.auth.HTTPDigestAuth(credentials['user'],

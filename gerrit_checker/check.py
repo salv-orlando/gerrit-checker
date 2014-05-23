@@ -28,6 +28,8 @@ def parse_arguments():
     parser.add_argument('--reviewers', type=str, nargs='+', required=True,
                         help='retrieve only patches being reviewed by '
                              'specified users')
+    parser.add_argument('--files', type=str,
+                        help='regex pattern for matching files')
     parser.add_argument('--peek', default=False, action='store_true',
                         help=("Only peek changes, do not update "
                               "check timestamp"))
@@ -118,7 +120,8 @@ def main():
         stuff = gerrit_client.get_changes(
             args.uri, projects_and_ages,
             owners=owners, exclude_owners=exclude_owners,
-            reviewers=args.reviewers, only_new=args.only_new,
+            reviewers=args.reviewers, files=args.files,
+            only_new=args.only_new,
             credentials=credentials)
     except req_exc.HTTPError as e:
         print("The Gerrit API request returned an error:%s" % e,
