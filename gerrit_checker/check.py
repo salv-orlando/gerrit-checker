@@ -34,6 +34,10 @@ def parse_arguments():
     parser.add_argument('--uri', type=str,
                         default='https://review.openstack.org',
                         help='Gerrit REST API endpoint (including protocol)')
+    parser.add_argument('--user', type=str,
+                        help='Gerrit user name for authentication')
+    parser.add_argument('--password', type=str,
+                        help='Gerrit HTTP password')
     return parser.parse_args()
 
 
@@ -77,9 +81,24 @@ def save_check_data(projects):
     f.close()
 
 
+def validate_input(args):
+    """Perform validation across multiple arguments"""
+    if (args.user or args.password) and not (args.user and args.password):
+        print("Both user and password should be specified."
+              "User is:%s, password is:%s" % (args.user, args.password),
+              file=sys.stderr)
+        sys.exit(1)
+    if ('self' in (args.owners or []) + (args.reviewers or []) and
+            not (args.user and args.password)):
+        print("The 'self' keyword cannot be used without credentials",
+              file=sys.stderr)
+        sys.exit(1)
+
+
 def main():
     # Parse arguments
     args = parse_arguments()
+    validate_input(args)
     if not args.age:
         # Age was not explicitly specified
         projects_and_ages = get_review_age(args.projects)
@@ -93,12 +112,17 @@ def main():
         exclude_owners = True
         owners = args.exclude_owners
     try:
+        credentials = None
+        if args.user:
+            credentials = {'user': args.user, 'password': args.password}
         stuff = gerrit_client.get_changes(
             args.uri, projects_and_ages,
             owners=owners, exclude_owners=exclude_owners,
-            reviewers=args.reviewers, only_new=args.only_new)
+            reviewers=args.reviewers, only_new=args.only_new,
+            credentials=credentials)
     except req_exc.HTTPError as e:
-        print("The Gerrit API request returned an error:%s" % e)
+        print("The Gerrit API request returned an error:%s" % e,
+              file=sys.stderr)
         sys.exit(1)
 
     columns = ["Project", "Change number", "Subject",

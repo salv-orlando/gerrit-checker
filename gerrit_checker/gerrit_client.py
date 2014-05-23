@@ -2,6 +2,7 @@ import datetime
 import json
 
 import requests
+import requests.auth
 
 from gerrit_checker import constants
 
@@ -50,7 +51,7 @@ def _prepare_output(data):
 
 def get_changes(uri, projects_and_ages, only_open=True,
                 owners=None, exclude_owners=False, reviewers=None,
-                only_new=False):
+                only_new=False, credentials=None):
     """Retrieves gerrit changes.
 
     Also performds filters on age, patch status, patch owner and newnewss.
@@ -70,15 +71,24 @@ def get_changes(uri, projects_and_ages, only_open=True,
         reviewers = []
     reviewer_clause = '+'.join(["%s:%s" % ('reviewer', reviewer)
                                 for reviewer in reviewers])
-    req_uri = (("%(uri)s/changes/?q=%(project_age)s"
+    auth = None
+    if credentials:
+        auth = requests.auth.HTTPDigestAuth(credentials['user'],
+                                            credentials['password'])
+    req_uri = (("%(uri)s/%(auth)schanges/?q=%(project_age)s"
                 "%(status)s%(owner)s%(reviewer)s&o=LABELS") %
                {'uri': uri,
+                'auth': 'a/' if auth else '',
                 'project_age': '(%s)' % project_age_clause,
                 'status': '+status:open' if only_open else '',
                 'owner': '+(%s)' % owner_clause if owner_clause else '',
                 'reviewer': ('+(%s)' % reviewer_clause
                              if reviewer_clause else '')})
-    res = requests.get(req_uri)
+    auth = None
+    if credentials:
+        auth = requests.auth.HTTPDigestAuth(credentials['user'],
+                                            credentials['password'])
+    res = requests.get(req_uri, auth=auth)
     _check_status_code(res)
     actual_res = res.text[res.text.index(constants.GERRIT_MAGIC_STRING) +
                           len(constants.GERRIT_MAGIC_STRING):]
