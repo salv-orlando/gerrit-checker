@@ -73,7 +73,7 @@ def get_changes(uri, projects_and_ages, only_open=True,
     req_uri = (("%(uri)s/changes/?q=%(project_age)s"
                 "%(status)s%(owner)s%(reviewer)s&o=LABELS") %
                {'uri': uri,
-                'project_age': project_age_clause,
+                'project_age': '(%s)' % project_age_clause,
                 'status': '+status:open' if only_open else '',
                 'owner': '+(%s)' % owner_clause if owner_clause else '',
                 'reviewer': ('+(%s)' % reviewer_clause
