@@ -49,7 +49,7 @@ def _prepare_output(data):
     return results
 
 
-def get_changes(uri, projects_and_ages, only_open=True,
+def get_changes(uri, projects_and_ages={}, only_open=True,
                 owners=None, exclude_owners=False, reviewers=None,
                 files=None, only_new=False, credentials=None):
     """Retrieves gerrit changes.
@@ -79,11 +79,12 @@ def get_changes(uri, projects_and_ages, only_open=True,
     if credentials:
         auth = requests.auth.HTTPDigestAuth(credentials['user'],
                                             credentials['password'])
-    req_uri = (("%(uri)s/%(auth)schanges/?q=%(project_age)s"
+    req_url = (("%(uri)s/%(auth)schanges/?q=%(project_age)s"
                 "%(status)s%(owner)s%(reviewer)s%(file)s&o=LABELS") %
                {'uri': uri,
                 'auth': 'a/' if auth else '',
-                'project_age': '(%s)' % project_age_clause,
+                'project_age': ('(%s)' % project_age_clause
+                                if project_age_clause else ''),
                 'status': '+status:open' if only_open else '',
                 'owner': '+(%s)' % owner_clause if owner_clause else '',
                 'reviewer': ('+(%s)' % reviewer_clause
@@ -93,10 +94,31 @@ def get_changes(uri, projects_and_ages, only_open=True,
     if credentials:
         auth = requests.auth.HTTPDigestAuth(credentials['user'],
                                             credentials['password'])
-    res = requests.get(req_uri, auth=auth)
+    res = requests.get(req_url, auth=auth)
     _check_status_code(res)
     actual_res = res.text[res.text.index(constants.GERRIT_MAGIC_STRING) +
                           len(constants.GERRIT_MAGIC_STRING):]
     stuff = json.loads(actual_res)
     return _prepare_output(_post_query_filtering(
         stuff, projects_and_ages, only_new))
+
+
+def add_reviewer_to_change(uri, user, password, change_id, reviewer):
+    """Add a reviewer to a gerrit change.
+
+    This operation requires authentication.
+    """
+    req_url = ("%(uri)s/a/changes/%(change_id)s/reviewers" %
+               {'uri': uri,
+                'change_id': change_id})
+    req_data = json.dumps({'reviewer': reviewer})
+    auth = requests.auth.HTTPDigestAuth(user, password)
+    res = requests.post(req_url, req_data, auth=auth,
+                        headers={'content-type': 'application/json'})
+    _check_status_code(res)
+    actual_res = res.text[res.text.index(constants.GERRIT_MAGIC_STRING) +
+                          len(constants.GERRIT_MAGIC_STRING):]
+    stuff = json.loads(actual_res)['reviewers']
+    # verify if the reviewer was actually added or not
+    reviewers = [item.get('username') for item in stuff]
+    return reviewer in reviewers

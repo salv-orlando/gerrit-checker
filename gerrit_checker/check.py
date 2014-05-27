@@ -28,6 +28,9 @@ def parse_arguments():
     parser.add_argument('--reviewers', type=str, nargs='+',
                         help='retrieve only patches being reviewed by '
                              'specified users')
+    parser.add_argument('--add-reviewer', type=str,
+                        help='add specified reviewer to the changes returned '
+                             'specified users')
     parser.add_argument('--files', type=str,
                         help='regex pattern for matching files')
     parser.add_argument('--peek', default=False, action='store_true',
@@ -85,16 +88,50 @@ def save_check_data(projects):
 
 def validate_input(args):
     """Perform validation across multiple arguments"""
-    if (args.user or args.password) and not (args.user and args.password):
+    has_credentials = args.user and args.password
+    if (args.user or args.password) and not has_credentials:
         print("Both user and password should be specified."
               "User is:%s, password is:%s" % (args.user, args.password),
               file=sys.stderr)
         sys.exit(1)
-    if ('self' in (args.owners or []) + (args.reviewers or []) and
-            not (args.user and args.password)):
+    username_args = (args.owners or []) + (args.reviewers or [])
+    if args.add_reviewer:
+        username_args.append(args.add_reviewer)
+    if ('self' in username_args and not has_credentials):
         print("The 'self' keyword cannot be used without credentials",
               file=sys.stderr)
         sys.exit(1)
+
+
+def get_changes():
+    pass
+
+
+def add_reviewer(args, changes):
+    new_changes = []
+    try:
+        # retrieve anyway the changes for which the user is already a reviewer
+        # in order to avoid unnecessary post requests to gerrit
+        reviewer_changes = [change[1]
+                            for change in gerrit_client.get_changes(
+                                args.uri, reviewers=[args.add_reviewer],
+                                credentials={'user': args.user,
+                                             'password': args.password})]
+        for change in changes:
+            # TODO: a simple transfer object would be way better than a tuple
+            if change[1] in reviewer_changes:
+                reviewer = True
+            else:
+                reviewer = gerrit_client.add_reviewer_to_change(
+                    args.uri, args.user, args.password,
+                    change[1], args.add_reviewer)
+
+            new_changes.append(change + (reviewer, ))
+    except req_exc.HTTPError as e:
+        print("The Gerrit API request returned an error:%s" % e,
+              file=sys.stderr)
+        sys.exit(1)
+    return new_changes
 
 
 def main():
@@ -130,6 +167,11 @@ def main():
 
     columns = ["Project", "Change number", "Subject",
                "Owner", "Last update", "Branch", "Topic"]
+    # TODO: implement support for check_reviewer
+    if args.add_reviewer:
+        columns.append('Reviewer')
+        stuff = add_reviewer(args, stuff)
+
     table = prettytable.PrettyTable(columns)
     for column in columns:
         table.align[column] = "l"
