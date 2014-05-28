@@ -64,8 +64,8 @@ def _prepare_output(data, is_auth=False):
 
 def get_changes(uri, projects_and_ages={}, only_open=True,
                 owners=None, exclude_owners=False, reviewers=None,
-                files=None, only_new=False, reviewed=None,
-                credentials=None):
+                wayward=False, files=None, only_new=False,
+                reviewed=None, credentials=None):
     """Retrieves gerrit changes.
 
     Also performds filters on age, patch status, patch owner and newnewss.
@@ -93,8 +93,12 @@ def get_changes(uri, projects_and_ages={}, only_open=True,
     if credentials:
         auth = requests.auth.HTTPDigestAuth(credentials['user'],
                                             credentials['password'])
+    labels = []
+    if wayward:
+        labels.append('-label:Code-Review<=2')
+    label_clause = '+'.join(labels)
     req_url = (("%(uri)s/%(auth)schanges/?q=%(project_age)s"
-                "%(status)s%(owner)s%(reviewer)s%(file)s"
+                "%(status)s%(owner)s%(reviewer)s%(file)s%(label)s"
                 "&o=LABELS&o=REVIEWED") %
                {'uri': uri,
                 'auth': 'a/' if auth else '',
@@ -104,7 +108,8 @@ def get_changes(uri, projects_and_ages={}, only_open=True,
                 'owner': '+(%s)' % owner_clause if owner_clause else '',
                 'reviewer': ('+(%s)' % reviewer_clause
                              if reviewer_clause else ''),
-                'file': '+file:%s' % files if files else ''})
+                'file': '+file:%s' % files if files else '',
+                'label': '+%s' % label_clause if label_clause else ''})
     auth = None
     if credentials:
         auth = requests.auth.HTTPDigestAuth(credentials['user'],

@@ -25,11 +25,16 @@ def parse_arguments():
                         help='Retrieve only completely new changes')
     parser.add_argument('--age', type=int, default=None,
                         help=('maximum review age in hours'))
-    parser.add_argument('--reviewers', type=str, nargs='+',
-                        help='retrieve only patches being reviewed by '
-                             'specified users')
-    reviewed_group = parser.add_mutually_exclusive_group()
 
+    reviewers_group = parser.add_mutually_exclusive_group()
+    reviewers_group.add_argument('--reviewers', type=str, nargs='+',
+                                 help=('retrieve only patches being reviewed '
+                                       'by specified users'))
+    reviewers_group.add_argument('--no-reviewer',
+                                 action='store_false', dest='reviewers',
+                                 help=('retrieve only patches which have'
+                                       'never been reviewed'))
+    reviewed_group = parser.add_mutually_exclusive_group()
     reviewed_group.add_argument('--reviewed', action='store_true',
                                 help=('retrieve only patches which have been '
                                       'reviewed. Requires authentication'))
@@ -165,12 +170,16 @@ def main():
         credentials = None
         if args.user:
             credentials = {'user': args.user, 'password': args.password}
+        wayward = False
+        if args.reviewers is False:
+            wayward = True
+            args.reviewers = []
         stuff = gerrit_client.get_changes(
             args.uri, projects_and_ages,
             owners=owners, exclude_owners=exclude_owners,
-            reviewers=args.reviewers, files=args.files,
-            only_new=args.only_new, reviewed=args.reviewed,
-            credentials=credentials)
+            reviewers=args.reviewers, wayward=wayward,
+            files=args.files, only_new=args.only_new,
+            reviewed=args.reviewed, credentials=credentials)
     except req_exc.HTTPError as e:
         print("The Gerrit API request returned an error:%s" % e,
               file=sys.stderr)
