@@ -32,20 +32,23 @@ def _post_query_filtering(data, projects_and_ages, only_new):
     return data
 
 
-def _prepare_output(data):
+def _prepare_output(data, is_auth=False):
     """Prepares a list response for the frontend."""
     results = []
     for change in data:
         # Gerrit outputs timestamps with nanoseconds. We're not that pedant
         update_timestamp = datetime.datetime.strptime(
             change['updated'][:-10], constants.DATETIME_FORMAT_G)
+        print change
+        reviewed = change.get('reviewed', False) if is_auth else None
         results.append((change['project'],
                         change['_number'],
                         change['subject'],
                         change['owner'].get('name'),
                         update_timestamp.strftime(constants.DATETIME_FORMAT),
                         change['branch'],
-                        change.get('topic')))
+                        change.get('topic'),
+                        reviewed))
     return results
 
 
@@ -72,7 +75,7 @@ def get_changes(uri, projects_and_ages={}, only_open=True,
     reviewer_clause = '+'.join(["%s:%s" % ('reviewer', reviewer)
                                 for reviewer in reviewers])
 
-    # Gerrit requires regex patter to start with '^'
+    # Gerrit requires regex pattern to start with '^'
     if files and not files.startswith('^'):
         files = '^' + files
     auth = None
@@ -80,7 +83,8 @@ def get_changes(uri, projects_and_ages={}, only_open=True,
         auth = requests.auth.HTTPDigestAuth(credentials['user'],
                                             credentials['password'])
     req_url = (("%(uri)s/%(auth)schanges/?q=%(project_age)s"
-                "%(status)s%(owner)s%(reviewer)s%(file)s&o=LABELS") %
+                "%(status)s%(owner)s%(reviewer)s%(file)s"
+                "&o=LABELS&o=REVIEWED") %
                {'uri': uri,
                 'auth': 'a/' if auth else '',
                 'project_age': ('(%s)' % project_age_clause
@@ -100,7 +104,7 @@ def get_changes(uri, projects_and_ages={}, only_open=True,
                           len(constants.GERRIT_MAGIC_STRING):]
     stuff = json.loads(actual_res)
     return _prepare_output(_post_query_filtering(
-        stuff, projects_and_ages, only_new))
+        stuff, projects_and_ages, only_new), is_auth=auth)
 
 
 def add_reviewer_to_change(uri, user, password, change_id, reviewer):

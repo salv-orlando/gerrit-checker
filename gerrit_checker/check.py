@@ -166,7 +166,7 @@ def main():
         sys.exit(1)
 
     columns = ["Project", "Change number", "Subject",
-               "Owner", "Last update", "Branch", "Topic"]
+               "Owner", "Last update", "Branch", "Topic", "Reviewed"]
     # TODO: implement support for check_reviewer
     if args.add_reviewer:
         columns.append('Reviewer')
