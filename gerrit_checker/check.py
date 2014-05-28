@@ -28,6 +28,15 @@ def parse_arguments():
     parser.add_argument('--reviewers', type=str, nargs='+',
                         help='retrieve only patches being reviewed by '
                              'specified users')
+    reviewed_group = parser.add_mutually_exclusive_group()
+
+    reviewed_group.add_argument('--reviewed', action='store_true',
+                                help=('retrieve only patches which have been '
+                                      'reviewed. Requires authentication'))
+    reviewed_group.add_argument('--not-reviewed',
+                                action='store_false', dest='reviewed',
+                                help=('retrieve only patches which have not '
+                                      'been reviewed.Requires authentication'))
     parser.add_argument('--add-reviewer', type=str,
                         help='add specified reviewer to the changes returned '
                              'specified users')
@@ -101,6 +110,9 @@ def validate_input(args):
         print("The 'self' keyword cannot be used without credentials",
               file=sys.stderr)
         sys.exit(1)
+    if args.reviewed and not has_credentials:
+        print("The 'reviewed' option cannot be used without credentials",
+              file=sys.stderr)
 
 
 def get_changes():
@@ -144,7 +156,6 @@ def main():
     else:
         projects_and_ages = (dict((project, args.age * 3600)
                              for project in args.projects))
-    print("Maximum review ages:\n%s" % projects_and_ages)
     exclude_owners = False
     owners = args.owners
     if args.exclude_owners:
@@ -158,7 +169,7 @@ def main():
             args.uri, projects_and_ages,
             owners=owners, exclude_owners=exclude_owners,
             reviewers=args.reviewers, files=args.files,
-            only_new=args.only_new,
+            only_new=args.only_new, reviewed=args.reviewed,
             credentials=credentials)
     except req_exc.HTTPError as e:
         print("The Gerrit API request returned an error:%s" % e,

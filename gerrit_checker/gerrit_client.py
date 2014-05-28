@@ -25,10 +25,21 @@ def _retrieve_new_changes(data, projects_and_ages):
     return results
 
 
-def _post_query_filtering(data, projects_and_ages, only_new):
+def _filter_by_reviewed(data, reviewed):
+    results = []
+    for change in data:
+        if change.get('reviewed', False) == reviewed:
+            results.append(change)
+    return results
+
+
+def _post_query_filtering(data, projects_and_ages, only_new, reviewed):
     """Perform further filtering on results returned by gerrit"""
     if only_new:
         data = _retrieve_new_changes(data, projects_and_ages)
+    # Explicit check with None as for reviewed=False the filter must be applied
+    if reviewed is not None:
+        data = _filter_by_reviewed(data, reviewed)
     return data
 
 
@@ -39,7 +50,6 @@ def _prepare_output(data, is_auth=False):
         # Gerrit outputs timestamps with nanoseconds. We're not that pedant
         update_timestamp = datetime.datetime.strptime(
             change['updated'][:-10], constants.DATETIME_FORMAT_G)
-        print change
         reviewed = change.get('reviewed', False) if is_auth else None
         results.append((change['project'],
                         change['_number'],
@@ -54,7 +64,8 @@ def _prepare_output(data, is_auth=False):
 
 def get_changes(uri, projects_and_ages={}, only_open=True,
                 owners=None, exclude_owners=False, reviewers=None,
-                files=None, only_new=False, credentials=None):
+                files=None, only_new=False, reviewed=None,
+                credentials=None):
     """Retrieves gerrit changes.
 
     Also performds filters on age, patch status, patch owner and newnewss.
@@ -104,7 +115,8 @@ def get_changes(uri, projects_and_ages={}, only_open=True,
                           len(constants.GERRIT_MAGIC_STRING):]
     stuff = json.loads(actual_res)
     return _prepare_output(_post_query_filtering(
-        stuff, projects_and_ages, only_new), is_auth=auth)
+        stuff, projects_and_ages, only_new, reviewed),
+        is_auth=auth)
 
 
 def add_reviewer_to_change(uri, user, password, change_id, reviewer):

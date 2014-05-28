@@ -20,7 +20,8 @@ echo Neutron DB patches
 gerrit-check --project openstack/neutron --user $user_name --password $password --file ^neutron/db/.* --exclude-owners $user_name --add-reviewer self --peek
 # check for neutron patches still without a reviewer (TODO)
 # check for tempest network patches still without a reviewer (TODO)
-# check for nova/neutron interface patches still without a reviewe (TODO)
+# check for nova/neutron interface patches still without a reviewer (TODO)
 # check for patches where I'm a reviewer but haven't actually reviewed yet
+gerrit-check --project openstack/neutron openstack/neutron-specs openstack/python-neutronclient openstack/nova openstack/oslo-incubator openstack/tempest --user $user_name --password $password --file ^neutron/db/.* --exclude-owners $user_name --reviewer self --not-reviewed --peek
 # check for patches which I'm reviewing and author has replied, and are now
 # waiting for another round of review (TODO)
