@@ -208,6 +208,8 @@ def main():
     table = prettytable.PrettyTable(columns)
     for column in columns:
         table.align[column] = "l"
+        if column == 'Subject':
+            table.max_width[column] = 60
     table.padding_width = 1
     for item in stuff:
         table.add_row(item)
