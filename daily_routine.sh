@@ -20,13 +20,13 @@ echo Neutron DB patches
 gerrit-check --project openstack/neutron --user $user_name --password $password --file ^neutron/db/.* --exclude-owners $user_name --add-reviewer self --peek
 # check for neutron patches still without a reviewer (up to 15 days)
 echo Neutron unreviewed patches
-gerrit-check --project openstack/neutron openstack/python-neutronclient --user $user_name --password $password --exclude-owners $user_name --no-reviewer --age 360
+gerrit-check --project openstack/neutron openstack/python-neutronclient --user $user_name --password $password --exclude-owners $user_name --no-reviewer --age 360 --peek
 # check for tempest network patches still without a reviewer (up to 15 days)
 echo Tempest unreviewed network patches
-gerrit-check --project openstack/tempest --user $user_name --password $password --file ^tempest/api/network.* --exclude-owners $user_name --no-reviewer --age 360
+gerrit-check --project openstack/tempest --user $user_name --password $password --file ^tempest/api/network.* --exclude-owners $user_name --no-reviewer --age 360 --peek
 # check for nova/neutron interface patches still without a reviewer (up to 15 days)
 echo Nova/Neutron interface unreviewed patches
-gerrit-check --project openstack/nova --user $user_name --password $password --file ^nova/network/neutronv2.* --exclude-owners $user_name --no-reviewer --age 360
+gerrit-check --project openstack/nova --user $user_name --password $password --file ^nova/network/neutronv2.* --exclude-owners $user_name --no-reviewer --age 360 --peek
 # check for patches where I'm a reviewer but haven't actually reviewed yet
 echo Patches you should really look at
 gerrit-check --project openstack/neutron openstack/neutron-specs openstack/python-neutronclient openstack/nova openstack/oslo-incubator openstack/tempest --user $user_name --password $password --file ^neutron/db/.* --exclude-owners $user_name --reviewer self --not-reviewed --peek

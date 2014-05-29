@@ -91,13 +91,26 @@ def get_review_age(projects):
 
 def save_check_data(projects):
     last_check = datetime.datetime.now()
+    try:
+        f = open(constants.CHECK_DATA_FILE)
+        data = json.loads(f.read())
+        last_checks = data['last_check']
+    except IOError as e:
+        print("Unable to load gerrit check timestamps file:%s" % e,
+              file=sys.stderr)
+        return
+    last_checks.update(dict((project,
+                             last_check.strftime(constants.DATETIME_FORMAT))
+                            for project in projects))
     output = json.dumps(
-        {'last_check':
-            dict((project, last_check.strftime(constants.DATETIME_FORMAT))
-                 for project in projects)})
-    f = open(constants.CHECK_DATA_FILE, 'w')
-    f.write(output)
-    f.close()
+        {'last_check': last_checks})
+    try:
+        f = open(constants.CHECK_DATA_FILE, 'w')
+        f.write(output)
+        f.close()
+    except IOError as e:
+        print("Unable to write gerrit check timestamps file:%s" % e,
+              file=sys.stderr)
 
 
 def validate_input(args):
